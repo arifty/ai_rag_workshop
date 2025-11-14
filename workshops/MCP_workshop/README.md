@@ -59,7 +59,7 @@ There are quite a few AWS MCP Servers: for Infrastructure & Development, for AI 
 ```
 **Why is this MCP Server interesting?** The LLMs that we use have a training cutoff date. Past that date, they are not aware of any new information. For example, Claude Sonnet 4.5 has a [training data cutoff in July 2025](https://docs.claude.com/en/docs/about-claude/models/overview).\
 However, when you're dealing with IT systems, being are fast-evolving, the information you get by querying those might have become obsolete, or worse, erroneous. 
-In this exercice, you can try to find a [latest AWS news](https://aws.amazon.com/new/), and ask your LLM about it. For example, when I ask the plain LLM (without tools) if Amazon CloudWatch Logs supports Network Load Balancer access logs, [a news from November 2025](https://aws.amazon.com/about-aws/whats-new/2025/11/amazon-cloudwatch-supports-logs-network-load-balancer-access-logs/):\
+In this exercise, you can try to find a [latest AWS news](https://aws.amazon.com/new/), and ask your LLM about it. For example, when I ask the plain LLM (without tools) if Amazon CloudWatch Logs supports Network Load Balancer access logs, [a news from November 2025](https://aws.amazon.com/about-aws/whats-new/2025/11/amazon-cloudwatch-supports-logs-network-load-balancer-access-logs/):\
 <img src="images/llm_wrong_answer.png" alt="LLM gives wrong outdated answer" width="400"/>
 
 After I've enabled the tools to be used however, the LLM is able to answer the same question correctly:\

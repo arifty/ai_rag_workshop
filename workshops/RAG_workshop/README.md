@@ -38,20 +38,14 @@ Don't get the pop? Force reopen in dev container as below:\
 
 ## Using a RAG with Github Copilot
 
-In this exercice, you can use a simple RAG implementation with Github Copilot.\
+In this exercise, you can use a simple RAG implementation with Github Copilot.\
 In the `main.py`, you can find the implementation using chromaDB
 
 ### Setting up an API Key
-Create a GitHub Personal Access Token:
-
-- Go to https://github.com/settings/tokens
-- Click "Generate new token (classic)"
-- Give it a name like "RAG Workshop"
-- Select the copilot scope
-- Generate and copy the token
+Get your API Key from your instructor
 
 Set the environment variable:\
-`export GITHUB_TOKEN='API_KEY'`
+`export API_KEY='your-api-key-here'`
 
 ### Read through the code
 Familiarize yourself with the code, the main attention points would be:
@@ -76,11 +70,12 @@ Below is an example of how to use this:
 
 ### Hackaway!
 Use the RAG system with your meeting notes, ask an LLM to summarize, analyse sentiments, extract information, connect the dots...
-**Next steps:** You probably don't want everyone to get access to document that you keep in your database. The next steps in building a RAG is how to setup some security around it. You can learn more about these [here](https://www.lasso.security/blog/rag-security#top-rag-security-risks) and [here](https://www.cisco.com/site/us/en/learn/topics/artificial-intelligence/retrieval-augmented-generation-rag.html)
+
+**Next steps:** You probably don't want everyone to get access to document that you keep in your database. The next steps in building a RAG is how to setup some security around it. You can learn more about these [here](https://www.lasso.security/blog/rag-security#top-rag-security-risks) and [here](https://www.cisco.com/site/us/en/learn/topics/artificial-intelligence/retrieval-augmented-generation-rag.html).
 
 ## Word Embedding
-In this exercice, we explore word embeddings and visualize multiple word embeddings in 2D.
-This exercice is mostly meant as a handhold exercice, where you walk through the provided Jupyter Notebook, but feel free to play around with it to personalize your experience.
+In this exercise, we explore word embeddings and visualize multiple word embeddings in 2D.
+This exercise is mostly meant as a handhold exercise, where you walk through the provided Jupyter Notebook, but feel free to play around with it to personalize your experience.
 When you launch the dev container, it will open a jupyter instance, you only to open the link provided.
 
 ![Start Jupyter Session](images/start_jupyter.png)
