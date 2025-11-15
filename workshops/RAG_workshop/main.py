@@ -7,19 +7,18 @@ A simple RAG implementation for querying your personal documents.
 import os
 from pathlib import Path
 from typing import List, Dict
-import numpy as np
 
 import chromadb
 from chromadb.config import Settings
 from openai import OpenAI
 
-GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "your-github-token-here")
+API_KEY = os.getenv("API_KEY", "your-api-key-here")
 DOCS_FOLDER = "./my_documents"
 CHROMA_DB_PATH = "./chroma_db"
 
 client = OpenAI(
-    base_url="https://models.inference.ai.azure.com",
-    api_key=GITHUB_TOKEN,
+    base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+    api_key=API_KEY,
 )
 
 chroma_client = chromadb.PersistentClient(path=CHROMA_DB_PATH)
@@ -183,7 +182,7 @@ Question: {query}
 Answer:"""
     
     response = client.chat.completions.create(
-        model="gpt-4o",
+        model="gemini-2.5-flash",
         messages=[
             {"role": "system", "content": "You are a helpful assistant that answers questions based on the provided context from the user's personal documents."},
             {"role": "user", "content": prompt}
@@ -233,7 +232,7 @@ def main():
         
         print("\n📚 Searching knowledge base...")
         # TODO: search the knowledge base for relevant chunks
-        
+
         if not relevant_chunks:
             print("No relevant information found.")
             continue
@@ -248,8 +247,8 @@ def main():
 
 
 if __name__ == "__main__":
-    if GITHUB_TOKEN == "your-github-token-here":
-        print("⚠️  Please set your GITHUB_TOKEN environment variable.")
-        print("\n   export GITHUB_TOKEN='your-token-here'")
+    if API_KEY == "your-api-key-here":
+        print("⚠️  Please set your API_KEY environment variable.")
+        print("\n   export API_KEY='your-api-key-here'")
     else:
         main()
