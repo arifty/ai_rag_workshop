@@ -2,17 +2,32 @@
 """
 Personal Knowledge Base RAG System - Workshop Boilerplate
 A simple RAG implementation for querying your personal documents.
+Enhanced with Snowflake Query Optimization capabilities.
 """
 
 import os
+import re
 from pathlib import Path
 from typing import List, Dict
 
 import chromadb
 from chromadb.config import Settings
 from openai import OpenAI
+import sys
 
-API_KEY = os.getenv("API_KEY", "your-api-key-here")
+# Import warehouse recommendation from gemini module
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'gemini'))
+from main import warehouse_recommendation
+
+# Try to import real connector, fall back to mock
+try:
+    from agents.snowflake_connector import SnowflakeConnector
+    USE_MOCK = False
+except Exception:
+    from agents.mock_snowflake_connector import MockSnowflakeConnector as SnowflakeConnector
+    USE_MOCK = True
+
+API_KEY = os.getenv("API_KEY", "AIzaSyCHq6hd75-plg6CoxpIGg9vh-6h-_xv34A")
 DOCS_FOLDER = "./my_documents"
 CHROMA_DB_PATH = "./chroma_db"
 
@@ -193,6 +208,95 @@ Answer:"""
     return response.choices[0].message.content
 
 
+def extract_query_ids(text: str) -> List[str]:
+    """
+    Extract query IDs from user input.
+    Looks for patterns like 'test_abc12345', 'abc12345', or alphanumeric IDs with underscores.
+    """
+    # Pattern for query IDs: starts with optional 'test_', then alphanumeric (8+ chars)
+    # Examples: test_abc12345, abc12345, xyz98765
+    pattern = r'\b(?:test_)?([a-z0-9]{8,})\b'
+    matches = re.findall(pattern, text.lower())
+    
+    # Filter out common English words that might match
+    common_words = {'warehouse', 'optimize', 'recommendation', 'question', 'database'}
+    matches = [m for m in matches if m not in common_words]
+    
+    # Reconstruct with test_ prefix if it was in original
+    result = []
+    for match in matches:
+        # Check if test_ prefix was in original text
+        if f'test_{match}' in text.lower():
+            result.append(f'test_{match}')
+        else:
+            result.append(match)
+    
+    return result
+
+
+def check_warehouse_recommendations(query_ids: List[str]) -> str:
+    """
+    Check warehouse recommendations for given query IDs using Snowflake.
+    Uses mock data if real Snowflake connection is not available.
+    """
+    try:
+        # Import mock connector
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'gemini'))
+        from agents.mock_snowflake_connector import MockSnowflakeConnector
+        
+        # Try to use real connector first if credentials exist
+        creds_path = os.path.join(os.path.dirname(__file__), "gemini/config/snowflake_creds.json")
+        use_mock = True
+        
+        if os.path.exists(creds_path):
+            try:
+                from agents.snowflake_connector import SnowflakeConnector as RealConnector
+                connector = RealConnector(config_path=creds_path)
+                if connector.conn:
+                    use_mock = False
+                    print("✅ Using real Snowflake connection")
+            except Exception as e:
+                print(f"⚠️  Real Snowflake connection failed: {str(e)[:100]}")
+                use_mock = True
+        
+        if use_mock:
+            print("ℹ️  Using mock Snowflake data (no credentials required)")
+            connector = MockSnowflakeConnector()
+        
+        if not connector.conn:
+            return "❌ Unable to connect. Please check configuration."
+        
+        # Get query details
+        print(f"🔍 Fetching details for query IDs: {', '.join(query_ids)}")
+        query_details = connector.get_query_details(query_ids)
+        connector.close()
+        
+        if not query_details:
+            return f"⚠️ No query details found for IDs: {', '.join(query_ids)}"
+        
+        # Get warehouse recommendations
+        recommendations = warehouse_recommendation(query_details)
+        
+        # Format as markdown table
+        import pandas as pd
+        df = pd.DataFrame(recommendations)
+        df['Cost Impact (Cr/Hr Diff)'] = df['Cost Impact (Cr/Hr Diff)'].apply(
+            lambda x: f"+{x:.0f}" if x > 0 else (f"{x:.0f}" if x < 0 else "0")
+        )
+        
+        output = "\n**📊 Warehouse Optimization Recommendations**\n\n"
+        output += df.to_markdown(index=False)
+        output += "\n\n💡 **Legend:**\n"
+        output += "- Positive Cost Impact: Higher hourly cost (but faster execution)\n"
+        output += "- Negative Cost Impact: Cost savings (may have slower execution)\n"
+        
+        return output
+        
+    except Exception as e:
+        import traceback
+        return f"❌ Error checking recommendations: {str(e)}\n{traceback.format_exc()}"
+
+
 def main():
     """
     Main workflow for the RAG system.
@@ -211,13 +315,19 @@ def main():
     
     # Step 2: Create/get collection
     # TODO: Add collection creation here
+    collection = create_or_get_collection()
     
     # Step 3: Index documents (only if collection is empty)
     # TODO: Index documents here. Bonus: what if the collection is not empty?
+    if collection.count() == 0:
+        index_documents(documents, collection)
+    else:
+        print("Collection already has data, skipping indexing.\n")
     
     # Step 4: Interactive query loop
     print("\n" + "="*50)
     print("Ready to answer questions! (Type 'quit' to exit)")
+    print("💡 Tip: Ask about Query IDs for warehouse optimization!")
     print("="*50 + "\n")
     
     while True:
@@ -230,8 +340,20 @@ def main():
         if not query:
             continue
         
+        # Check if query mentions Query ID or contains query IDs
+        query_ids = extract_query_ids(query)
+        is_query_id_question = 'query id' in query.lower() or 'query_id' in query.lower() or 'queryid' in query.lower()
+        
+        if query_ids and (is_query_id_question or 'recommend' in query.lower() or 'optimize' in query.lower() or 'warehouse' in query.lower()):
+            # Use Snowflake warehouse recommendation
+            print("\n🏢 Checking Snowflake warehouse recommendations...")
+            result = check_warehouse_recommendations(query_ids)
+            print(f"\n{result}")
+            continue
+        
         print("\n📚 Searching knowledge base...")
         # TODO: search the knowledge base for relevant chunks
+        relevant_chunks = search_knowledge_base(query, collection)
 
         if not relevant_chunks:
             print("No relevant information found.")

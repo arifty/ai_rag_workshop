@@ -1,6 +1,22 @@
 from fastmcp import FastMCP
 import chromadb
 from typing import List, Dict, Any
+import os
+import sys
+
+# Import warehouse recommendation functionality
+sys.path.insert(0, os.path.dirname(__file__))
+try:
+    from gemini.main import warehouse_recommendation
+    # Try real connector first, fall back to mock
+    try:
+        from gemini.agents.snowflake_connector import SnowflakeConnector
+    except Exception:
+        from gemini.agents.mock_snowflake_connector import MockSnowflakeConnector as SnowflakeConnector
+    SNOWFLAKE_AVAILABLE = True
+except ImportError:
+    SNOWFLAKE_AVAILABLE = False
+    print("⚠️ Snowflake integration not available")
 
 # Initialize FastMCP
 mcp = FastMCP("ChromaDB RAG Server")
@@ -88,6 +104,57 @@ def get_document(doc_id: str) -> str:
     if result['documents']:
         return result['documents'][0]
     return f"Document {doc_id} not found"
+
+@mcp.tool()
+def get_warehouse_recommendations(query_ids: List[str]) -> Dict[str, Any]:
+    """
+    Get warehouse optimization recommendations for Snowflake query IDs.
+    
+    Args:
+        query_ids: List of Snowflake query IDs to analyze
+    
+    Returns:
+        Dictionary with recommendations for warehouse sizing and cost optimization
+    """
+    if not SNOWFLAKE_AVAILABLE:
+        return {
+            "error": "Snowflake integration not available",
+            "message": "Missing dependencies or configuration"
+        }
+    
+    try:
+        # Initialize Snowflake connector
+        connector = SnowflakeConnector(config_path="gemini/config/snowflake_creds.json")
+        if not connector.conn:
+            return {
+                "error": "Snowflake connection failed",
+                "message": "Unable to connect to Snowflake. Check credentials."
+            }
+        
+        # Get query details
+        query_details = connector.get_query_details(query_ids)
+        connector.close()
+        
+        if not query_details:
+            return {
+                "error": "No data found",
+                "message": f"No query details found for IDs: {', '.join(query_ids)}"
+            }
+        
+        # Get recommendations
+        recommendations = warehouse_recommendation(query_details)
+        
+        return {
+            "success": True,
+            "query_count": len(recommendations),
+            "recommendations": recommendations
+        }
+        
+    except Exception as e:
+        return {
+            "error": "Processing failed",
+            "message": str(e)
+        }
 
 if __name__ == "__main__":
     mcp.run()
